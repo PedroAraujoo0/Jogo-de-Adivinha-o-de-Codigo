@@ -1,34 +1,117 @@
-char x[6];
-void setup() 
-{
-  int i;
-  randomSeed(analogRead(0));
-  Serial.begin(9600);
-  for(i=0;i<5;++i)
-  {
-    x[i]=random(10) + '0';
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <Keypad.h>
+
+// --- CONFIGURAÇÃO DO LCD PARA O TINKERCAD (0x20) ---
+LiquidCrystal_I2C lcd(0x20, 16, 2);
+
+// --- CONFIGURAÇÃO DO TECLADO 4x4 ---
+const byte LINHAS = 4;
+const byte COLUNAS = 4;
+
+char mapaTeclas[LINHAS][COLUNAS] = {
+  {'1','2','3','A'}, 
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}  
+};
+
+byte pinosLinhas[LINHAS] = {9, 8, 7, 6};   
+byte pinosColunas[COLUNAS] = {5, 4, 3, 2}; 
+
+Keypad teclado = Keypad(makeKeymap(mapaTeclas), pinosLinhas, pinosColunas, LINHAS, COLUNAS);
+
+// --- CONFIGURAÇÃO DO JOGO ---
+const char senhaSecreta[] = "3582"; 
+char palpite[5]; // Vetor com espaço para 4 números + caractere nulo                    
+int indicePalpite = 0;
+int totalTentativas = 0; 
+
+void setup() {
+  lcd.init();
+  lcd.backlight();
+  lcd.display(); 
+  exibirTelaInicial();
+}
+
+void loop() {
+  char teclaPressionada = teclado.getKey();
+  
+  if (teclaPressionada) {
+    
+    // CONFIRMAR PALPITE (Tecla 'A')
+    if (teclaPressionada == 'A') {
+      if (indicePalpite == 4) {
+        palpite[4] = '\0'; // Finaliza a string de forma segura no simulador
+        
+        totalTentativas++; 
+        
+        if (strcmp(palpite, senhaSecreta) == 0) {
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print(" ACERTOU! GENIO!");
+          lcd.setCursor(0, 1);
+          lcd.print("Tentativas: ");
+          lcd.print(totalTentativas);
+          while(true); 
+        } 
+        else {
+          lcd.setCursor(0, 1);
+          lcd.print("Dica: "); 
+          
+          for (int i = 0; i < 4; i++) {
+            lcd.setCursor(6 + i, 1); 
+            
+            if (palpite[i] == senhaSecreta[i]) {
+              lcd.print("C"); 
+            } 
+            else if (strchr(senhaSecreta, palpite[i]) != NULL) {
+              lcd.print("L"); 
+            } 
+            else {
+              lcd.print("X"); 
+            }
+          }
+          
+          delay(4000); 
+          limparTentativa(); 
+        }
+      }
+    }
+    
+    // APAGAR / RECOMEÇAR PALPITE (Tecla '#')
+    else if (teclaPressionada == '#') {
+      limparTentativa();
+    }
+    
+    // DIGITAR OS NÚMEROS
+    else if (teclaPressionada >= '0' && teclaPressionada <= '9') {
+      if (indicePalpite < 4) {
+        palpite[indicePalpite] = teclaPressionada;
+        
+        lcd.setCursor(6 + indicePalpite, 0); 
+        lcd.print(teclaPressionada);
+        
+        indicePalpite++;
+      }
+    }
   }
 }
 
-void loop() 
-{
-  
-  String y;
-  int i;
-     
-  
-    Serial.println(x);
-  while(Serial.available()==0){}
-  y=Serial.readString();
-  y.trim();
+void exibirTelaInicial() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Tente:");
+  lcd.setCursor(0, 1);
+  lcd.print("A=Env ");
+}
 
-  if(y==x)
-  {
-    Serial.println("Ganhou!");
-  }
-  else
-  {
-
-  }
+void limparTentativa() {
+  indicePalpite = 0;
+  memset(palpite, 0, sizeof(palpite));
   
+  lcd.setCursor(6, 0);
+  lcd.print("    ");
+  lcd.setCursor(0, 1);
+  lcd.print("A=Env           ");
 }
