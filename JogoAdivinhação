@@ -22,8 +22,9 @@ byte pinosColunas[COLUNAS] = {5, 4, 3, 2};
 Keypad teclado = Keypad(makeKeymap(mapaTeclas), pinosLinhas, pinosColunas, LINHAS, COLUNAS);
 
 // --- CONFIGURAÇÃO DO JOGO ---
-const char senhaSecreta[] = "3582"; 
-char palpite[5]; // Vetor com espaço para 4 números + caractere nulo                    
+char senhaSecreta[5];      // Agora é gerada a cada rodada (4 dígitos + nulo)
+bool rodadaAtiva = false;  // Indica se a senha da rodada já foi gerada
+char palpite[5];                    
 int indicePalpite = 0;
 int totalTentativas = 0; 
 
@@ -38,11 +39,19 @@ void loop() {
   char teclaPressionada = teclado.getKey();
   
   if (teclaPressionada) {
+
+    // Gera a senha na primeira tecla da rodada.
+    // O momento exato do aperto (micros) é o que torna a semente imprevisível.
+    if (!rodadaAtiva) {
+      randomSeed(micros() ^ analogRead(A0));
+      gerarSenha();
+      rodadaAtiva = true;
+    }
     
     // CONFIRMAR PALPITE (Tecla 'A')
     if (teclaPressionada == 'A') {
       if (indicePalpite == 4) {
-        palpite[4] = '\0'; // Finaliza a string de forma segura no simulador
+        palpite[4] = '\0';
         
         totalTentativas++; 
         
@@ -53,7 +62,9 @@ void loop() {
           lcd.setCursor(0, 1);
           lcd.print("Tentativas: ");
           lcd.print(totalTentativas);
-          while(true); 
+          
+          delay(5000);
+          novaRodada();
         } 
         else {
           lcd.setCursor(0, 1);
@@ -96,6 +107,29 @@ void loop() {
       }
     }
   }
+}
+
+// Gera 4 dígitos aleatórios, sem repetição (deixa as dicas C/L/X mais justas)
+void gerarSenha() {
+  bool usado[10] = {false};
+  
+  for (int i = 0; i < 4; i++) {
+    int d;
+    do {
+      d = random(0, 10);
+    } while (usado[d]);
+    
+    usado[d] = true;
+    senhaSecreta[i] = '0' + d;
+  }
+  senhaSecreta[4] = '\0';
+}
+
+void novaRodada() {
+  rodadaAtiva = false;   // A próxima tecla gera uma nova senha
+  totalTentativas = 0;
+  exibirTelaInicial();
+  limparTentativa();
 }
 
 void exibirTelaInicial() {
