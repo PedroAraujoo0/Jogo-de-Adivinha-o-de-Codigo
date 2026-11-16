@@ -1,54 +1,54 @@
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include <Keypad.h>
+#include <Wire.h> //barramento I2C
+#include <LiquidCrystal_I2C.h> //telinha usando o barramento I2C
+#include <Keypad.h> // o negócio que cria o teclado
 
-// --- CONFIGURAÇÃO DO LCD PARA O TINKERCAD (0x20) ---
-LiquidCrystal_I2C lcd(0x20, 16, 2);
+// tinkerkad telinha
+LiquidCrystal_I2C lcd(0x20, 16, 2); //0x20 é o endereço, 16 coluna e 2 linha tlgd
 
-// --- CONFIGURAÇÃO DO TECLADO 4x4 ---
-const byte LINHAS = 4;
-const byte COLUNAS = 4;
+//teclado
+const byte LINHAS=4; //pra matriz
+const byte COLUNAS=4;
 
-char mapaTeclas[LINHAS][COLUNAS] = {
+char mapaTeclas[LINHAS][COLUNAS] = { //mapaTeclas é o tecladinho que será criado
   {'1','2','3','A'}, 
   {'4','5','6','B'},
   {'7','8','9','C'},
   {'*','0','#','D'}  
 };
 
-byte pinosLinhas[LINHAS] = {9, 8, 7, 6};   
-byte pinosColunas[COLUNAS] = {5, 4, 3, 2}; 
+byte pinosLinhas[LINHAS]={9, 8, 7, 6};   //pinos do arduino conectados com as linha e as coluna
+byte pinosColunas[COLUNAS]={5, 4, 3, 2}; 
 
-Keypad teclado = Keypad(makeKeymap(mapaTeclas), pinosLinhas, pinosColunas, LINHAS, COLUNAS);
-
-// --- CONFIGURAÇÃO DO JOGO ---
-char senhaSecreta[5];      // Agora é gerada a cada rodada (4 dígitos + nulo)
-bool rodadaAtiva = false;  // Indica se a senha da rodada já foi gerada
+Keypad teclado = Keypad(makeKeymap(mapaTeclas), pinosLinhas, pinosColunas, LINHAS, COLUNAS); //coisa delicada
+//ali em cima o keypad, uma variável da keypad.h, cria o objeto teclado; makeKeymap transforma a matriz
+//num teclado usável mesmo. E o resto segue
+// configuração do jogo
+char senhaSecreta[5];      
+bool rodadaAtiva = false;  //vê se já tem ou n a senha; começa false
 char palpite[5];                    
-int indicePalpite = 0;
-int totalTentativas = 0; 
+int indicePalpite=0; //número de digitos indicePalpite
+int totalTentativas=0; 
 
 void setup() {
-  lcd.init();
+  lcd.init(); 
   lcd.backlight();
   lcd.display(); 
   exibirTelaInicial();
 }
 
 void loop() {
-  char teclaPressionada = teclado.getKey();
+  char teclaPressionada = teclado.getKey(); //getKey vê se tu digitou algo mesmo e pega o digito
   
   if (teclaPressionada) {
 
-    // Gera a senha na primeira tecla da rodada.
-    // O momento exato do aperto (micros) é o que torna a semente imprevisível.
+   
     if (!rodadaAtiva) {
-      randomSeed(micros() ^ analogRead(A0));
-      gerarSenha();
-      rodadaAtiva = true;
+      randomSeed(micros() ^ analogRead(A0)); //seed aleatório; micro é microssegundo desde o inicio
+      gerarSenha();                          //do programa; analogRead retorna o valor dum pino desconectado;
+      rodadaAtiva = true;                    //XOR numero igual 0
     }
     
-    // CONFIRMAR PALPITE (Tecla 'A')
+    // A é enter
     if (teclaPressionada == 'A') {
       if (indicePalpite == 4) {
         palpite[4] = '\0';
@@ -70,13 +70,13 @@ void loop() {
           lcd.setCursor(0, 1);
           lcd.print("Dica: "); 
           
-          for (int i = 0; i < 4; i++) {
+          for (int i = 0; i < 4; i++) { //pra dar as dicas
             lcd.setCursor(6 + i, 1); 
             
             if (palpite[i] == senhaSecreta[i]) {
               lcd.print("C"); 
             } 
-            else if (strchr(senhaSecreta, palpite[i]) != NULL) {
+            else if (strchr(senhaSecreta, palpite[i]) != NULL) { //procura um char na string, se tiver faz o L
               lcd.print("L"); 
             } 
             else {
@@ -90,17 +90,17 @@ void loop() {
       }
     }
     
-    // APAGAR / RECOMEÇAR PALPITE (Tecla '#')
+    // pra apagar usando o joguo da veia
     else if (teclaPressionada == '#') {
       limparTentativa();
     }
     
-    // DIGITAR OS NÚMEROS
+    // PRA digitar os números
     else if (teclaPressionada >= '0' && teclaPressionada <= '9') {
       if (indicePalpite < 4) {
         palpite[indicePalpite] = teclaPressionada;
         
-        lcd.setCursor(6 + indicePalpite, 0); 
+        lcd.setCursor(6 + indicePalpite, 0); //Tente:
         lcd.print(teclaPressionada);
         
         indicePalpite++;
@@ -109,9 +109,9 @@ void loop() {
   }
 }
 
-// Gera 4 dígitos aleatórios, sem repetição (deixa as dicas C/L/X mais justas)
+
 void gerarSenha() {
-  bool usado[10] = {false};
+  bool usado[10] = {false}; //bicho pra não repetir número
   
   for (int i = 0; i < 4; i++) {
     int d;
@@ -126,7 +126,7 @@ void gerarSenha() {
 }
 
 void novaRodada() {
-  rodadaAtiva = false;   // A próxima tecla gera uma nova senha
+  rodadaAtiva = false;   
   totalTentativas = 0;
   exibirTelaInicial();
   limparTentativa();
@@ -142,7 +142,7 @@ void exibirTelaInicial() {
 
 void limparTentativa() {
   indicePalpite = 0;
-  memset(palpite, 0, sizeof(palpite));
+  memset(palpite, 0, sizeof(palpite)); //pega string; número que vai trocar cada posição; tamanho da string
   
   lcd.setCursor(6, 0);
   lcd.print("    ");
